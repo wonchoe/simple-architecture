@@ -14,6 +14,14 @@ Parameters:
     Type: String
 
 Resources:
+  # role for ssm agent
+  EC2SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - EC2-SSMRole
+
   # Security Group for Dev EC2 (allow SSH + HTTP)
   DevInstanceSG:
     Type: AWS::EC2::SecurityGroup
@@ -28,6 +36,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -63,6 +75,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           SourceSecurityGroupId: !Ref ALBSG
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: ProdInstanceSG
@@ -71,6 +88,7 @@ Resources:
   DevInstance:
     Type: AWS::EC2::Instance
     Properties:
+      IamInstanceProfile: !Ref EC2SSMInstanceProfile
       ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2
       InstanceType: t3.micro
       SubnetId: !Ref PublicSubnetId
@@ -132,6 +150,8 @@ Resources:
     Properties:
       LaunchTemplateName: prod-lt
       LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt EC2SSMInstanceProfile.Arn
         ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2 (заміни при потребі)
         InstanceType: t3.micro
         SecurityGroupIds:
