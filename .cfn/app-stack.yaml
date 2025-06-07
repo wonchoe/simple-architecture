@@ -152,7 +152,7 @@ Resources:
       LaunchTemplateData:
         IamInstanceProfile:
           Arn: !GetAtt EC2SSMInstanceProfile.Arn
-        ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2 (заміни при потребі)
+        ImageId: ami-02457590d33d576c3 # Amazon Linux 2 (заміни при потребі)
         InstanceType: t3.micro
         SecurityGroupIds:
           - !Ref ProdInstanceSG
@@ -164,10 +164,22 @@ Resources:
         UserData: !Base64 |
           #!/bin/bash
           yum update -y
+          yum install -y ruby wget
+
+          # Встановлюємо CodeDeploy агент
+          cd /home/ec2-user
+          wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+          chmod +x ./install
+          ./install auto
+          systemctl start codedeploy-agent
+          systemctl enable codedeploy-agent
+
+          # Node.js та PM2
           curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
           yum install -y nodejs git
           npm install -g pm2
-          # опціонально: створити директорію для апки
+
+          # Створюємо директорію для апки
           mkdir -p /var/www/app
           chown ec2-user:ec2-user /var/www/app
 
