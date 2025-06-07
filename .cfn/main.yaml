@@ -58,6 +58,5 @@ Resources:
           Fn::GetAtt:
             - VPCStack
             - Outputs.PrivateSubnet2
-        DBMasterPassword: /test/prod/db/pass    # або інший шлях до SSM SecureString (можна залишити дефолт, якщо в rds-stack.yaml стоїть Default)
+        DBMasterPassword: /test/prod/db/pass
 
-# Optionally, you can add Outputs if you want to export something from main stack.

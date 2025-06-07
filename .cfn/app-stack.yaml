@@ -34,8 +34,8 @@ Resources:
           ToPort: 22
           CidrIp: 0.0.0.0/0 # (Змініть на свій IP у реальному проекті!)
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 443
@@ -71,6 +71,10 @@ Resources:
       GroupDescription: Allow HTTP from ALB only
       VpcId: !Ref VpcId
       SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSG
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -124,14 +128,14 @@ Resources:
     Properties:
       VpcId: !Ref VpcId
       Protocol: HTTP
-      Port: 80
+      Port: 8080
       TargetType: instance
       HealthCheckProtocol: HTTP
-      HealthCheckPort: '80'
+      HealthCheckPort: '8080'
       HealthCheckPath: /
       Matcher:
         HttpCode: 200-399
-      Name: prod-target-group
+      Name: prod-target-group-new
 
   # Listener for ALB
   ALBListener:
@@ -166,22 +170,22 @@ Resources:
           yum update -y
           yum install -y ruby wget
 
-          # Встановлюємо CodeDeploy агент
+          # Node.js + PM2
+          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+          yum install -y nodejs git
+          npm install -g pm2
+
+          # app folder
+          mkdir -p /var/www/app
+          chown ec2-user:ec2-user /var/www/app
+
+          # CodeDeploy install
           cd /home/ec2-user
           wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
           chmod +x ./install
           ./install auto
           systemctl start codedeploy-agent
           systemctl enable codedeploy-agent
-
-          # Node.js та PM2
-          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-          yum install -y nodejs git
-          npm install -g pm2
-
-          # Створюємо директорію для апки
-          mkdir -p /var/www/app
-          chown ec2-user:ec2-user /var/www/app
 
   # Auto Scaling Group for Prod
   ProdASG:
