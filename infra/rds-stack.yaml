@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS MySQL DB in private subnets, password from SSM SecureString (Prod & Dev)
+
+Parameters:
+  VpcId:
+    Type: String
+  PrivateSubnet1Id:
+    Type: String
+  PrivateSubnet2Id:
+    Type: String
+
+  # PROD
+  DBMasterPassword:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: SSM SecureString parameter with DB master password (e.g., /test/prod/db/pass)
+    Default: /test/prod/db/pass
+  DBMasterUsername:
+    Type: String
+    Default: /test/prod/db/username
+    Description: DB Master username
+
+  # DEV
+  DevDBMasterPassword:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: SSM SecureString parameter with DEV DB master password (e.g., /test/dev/db/pass)
+    Default: /test/dev/db/pass
+  DevDBMasterUsername:
+    Type: String
+    Default: /test/dev/db/username
+    Description: DEV DB Master username
+
+Resources:
+  # Security Group for PROD RDS
+  ProdRdsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow MySQL from prod EC2 only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: ProdRdsSG
+
+  # Security Group for DEV RDS
+  DevRdsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow MySQL from dev only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: DevRdsSG
+
+  # RDS Subnet Group (multi-AZ for PROD)
+  ProdDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Prod RDS subnet group"
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      Tags:
+        - Key: Name
+          Value: ProdDbSubnetGroup
+
+  # RDS Subnet Group (DEV, single subnet)
+  DevDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Dev RDS subnet group"
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+      Tags:
+        - Key: Name
+          Value: DevDbSubnetGroup
+
+  # RDS Instance (PROD)
+  ProdRDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      DBSubnetGroupName: !Ref ProdDbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref ProdRdsSG
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      MultiAZ: true
+      StorageEncrypted: true
+      PubliclyAccessible: false
+      DBName: prod_db
+      DeletionProtection: false
+      BackupRetentionPeriod: 7
+      Tags:
+        - Key: Name
+          Value: ProdRDS
+
+  # RDS Instance (DEV)
+  DevRDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 10
+      DBSubnetGroupName: !Ref DevDbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DevRdsSG
+      MasterUsername: !Ref DevDBMasterUsername
+      MasterUserPassword: !Ref DevDBMasterPassword
+      MultiAZ: false
+      StorageEncrypted: false
+      PubliclyAccessible: false
+      DBName: dev_db
+      DeletionProtection: false
+      BackupRetentionPeriod: 1
+      Tags:
+        - Key: Name
+          Value: DevRDS
+
+Outputs:
+  # PROD
+  RDSInstanceEndpoint:
+    Value: !GetAtt ProdRDS.Endpoint.Address
+    Description: Prod RDS endpoint
+  RDSInstanceId:
+    Value: !Ref ProdRDS
+    Description: Prod RDS instance ID
+  RDSDbName:
+    Value: prod_db
+    Description: Prod database name
+
+  # DEV
+  DevRDSInstanceEndpoint:
+    Value: !GetAtt DevRDS.Endpoint.Address
+    Description: Dev RDS endpoint
+  DevRDSInstanceId:
+    Value: !Ref DevRDS
+    Description: Dev RDS instance ID
+  DevRDSDbName:
+    Value: dev_db
+    Description: Dev database name
