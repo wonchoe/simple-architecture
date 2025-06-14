@@ -1,6 +1,7 @@
 # AWS DevOps Demo App
-<img src="diagrams/infra.png" alt="Architecture Diagram" width="800"/>
 This repository demonstrates a minimal AWS-based infrastructure and CI/CD pipeline for a simple Node.js application, using CloudFormation and versioned Infrastructure as Code.
+
+<img src="diagrams/infra.png" alt="Architecture Diagram" width="800"/>
 
 ## Structure
 
